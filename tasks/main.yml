@@ -16,7 +16,7 @@
 
 - name: get iptables rules {{ role_comment }}
   become: true
-  shell: iptables-save
+  command: iptables-save
   register: iptablesrules
   no_log: "{{ debug_hide }}"
   when:
@@ -46,7 +46,7 @@
 
 - name: configuring iptables rules {{ role_comment }}
   become: true
-  shell: >-
+  command: >-
     iptables -{{ item.action | default('A') }} {{ item.chain | default('INPUT') }}
     -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }}
     --dport {{ item.port | default('8080') }} -j {{ item.jump_target | default('ACCEPT') }}
@@ -67,7 +67,7 @@
 
 - name: removing iptables rules {{ role_comment }}
   become: true
-  shell: >-
+  command: >-
     iptables -D {{ item.chain | default('INPUT') }}
     -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }}
     --dport {{ item.port | default('8080') }} -j {{ item.jump_target | default('ACCEPT') }}
@@ -90,7 +90,7 @@
 
 - name: configuring forward iptables rules {{ role_comment }}
   become: true
-  shell: >-
+  command: >-
     iptables -{{ item.action | default('A') }} {{ item.chain }} -i {{ item.interface_from }}
     -o {{ item.interface_to }} -j {{ item.jump_target | default('ACCEPT') }}
     -m comment --comment "{{ item.comment | default('ansible managed') }}"
@@ -110,7 +110,7 @@
 
 - name: removing forward iptables rules {{ role_comment }}
   become: true
-  shell: >-
+  command: >-
     iptables -D {{ item.chain }} -i {{ item.interface_from }} -o {{ item.interface_to }}
     -j {{ item.jump_target | default('ACCEPT') }} -m comment --comment "{{ item.comment | default('ansible managed') }}"
   no_log: "{{ debug_hide }}"
@@ -128,7 +128,7 @@
 
 - name: save iptables {{ role_comment }}
   become: true
-  shell: iptables-save | tee /etc/sysconfig/iptables
+  command: iptables-save | tee /etc/sysconfig/iptables
   no_log: "{{ debug_hide }}"
   when:
     - iptable_rules is defined
