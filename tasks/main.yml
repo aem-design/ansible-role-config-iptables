@@ -35,7 +35,7 @@
 
 - name: remove iptables {{ role_comment }}
   debug:
-    msg: "{{ configure_iptables_remove | default('no')}}"
+    msg: "{{ configure_iptables_remove | default(false) }}"
   no_log: "{{ debug_hide }}"
   when:
     - iptable_rules is defined
@@ -61,7 +61,7 @@
       -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }}
       --dport {{ item.port | default('8080') }}
       -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") == -1
-    - configure_iptables_remove is not defined and configure_iptables_remove != 'yes'
+    - configure_iptables_remove is not defined and configure_iptables_remove != true
   tags:
     - config-iptables
 
@@ -82,7 +82,7 @@
       -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }}
       --dport {{ item.port | default('8080') }}
       -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") != -1
-    - configure_iptables_remove is defined and configure_iptables_remove == 'yes'
+    - configure_iptables_remove is defined and configure_iptables_remove == true
   tags:
     - config-iptables
 
@@ -104,7 +104,7 @@
       iptablesrules.stdout.find("{{ item.chain }} -i {{ item.interface_from }}
       -o {{ item.interface_to }} -m comment --comment {{ item.comment | default('ansible managed') }}
       -j {{ item.jump_target | default('ACCEPT') }}") == -1
-    - configure_iptables_remove is not defined and configure_iptables_remove != 'yes'
+    - configure_iptables_remove is not defined and configure_iptables_remove != true
   tags:
     - config-iptables
 
@@ -122,7 +122,7 @@
     - >-
       iptablesrules.stdout.find("{{ item.chain }} -i {{ item.interface_from }} -o {{ item.interface_to }}
       -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") != -1
-    - configure_iptables_remove is defined and configure_iptables_remove == 'yes'
+    - configure_iptables_remove is defined and configure_iptables_remove == true
   tags:
     - config-iptables
 
