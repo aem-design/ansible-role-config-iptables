@@ -82,7 +82,7 @@
       -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }}
       --dport {{ item.port | default('8080') }}
       -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") != -1
-    - configure_iptables_remove is defined and configure_iptables_remove == true
+    - configure_iptables_remove is defined and configure_iptables_remove
   tags:
     - config-iptables
 
@@ -122,7 +122,7 @@
     - >-
       iptablesrules.stdout.find("{{ item.chain }} -i {{ item.interface_from }} -o {{ item.interface_to }}
       -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") != -1
-    - configure_iptables_remove is defined and configure_iptables_remove == true
+    - configure_iptables_remove is defined and configure_iptables_remove
   tags:
     - config-iptables
 
