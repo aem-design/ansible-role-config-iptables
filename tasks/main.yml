@@ -1,0 +1,120 @@
+---
+
+- name: "set facts"
+  set_fact:
+    role_comment: "( {{ docker_container_name | default('aem') }} )"
+  tags:
+    - config-iptables
+
+- name: iptable_rules are not defined {{ role_comment }}
+  debug:
+    msg: "iptable_rules are not defined"
+  when:
+    - iptable_rules is not defined
+  tags:
+    - config-iptables
+
+- name: get iptables rules {{ role_comment }}
+  become: yes
+  shell: iptables-save
+  register: iptablesrules
+  no_log: "{{ debug_hide }}"
+  when:
+    - iptable_rules is defined
+  tags:
+    - config-iptables
+
+- name: updating iptables {{ role_comment }}
+  debug:
+    msg: "{{ iptable_rules }}"
+  no_log: "{{ debug_hide }}"
+  when:
+    - iptable_rules is defined
+  tags:
+    - config-iptables
+
+- name: remove iptables {{ role_comment }}
+  debug:
+    msg: "{{ configure_iptables_remove | default('no')}}"
+  no_log: "{{ debug_hide }}"
+  when:
+    - iptable_rules is defined
+  tags:
+    - config-iptables
+
+# PROCESS not chain=FORWARD
+
+- name: configuring iptables rules {{ role_comment }}
+  become: yes
+  shell: iptables -{{ item.action | default('A') }} {{ item.chain | default('INPUT') }} -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }} --dport {{ item.port | default('8080') }} -j {{ item.jump_target | default('ACCEPT') }} -m comment --comment "{{ item.comment | default('ansible managed') }}"
+  no_log: "{{ debug_hide }}"
+  with_items: "{{ iptable_rules | default([]) }}"
+  when:
+    - iptable_rules is defined
+    - item.chain is not defined or item.chain != 'FORWARD'
+    - iptablesrules.stdout.find("{{ item.chain | default('INPUT') }} -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }} --dport {{ item.port | default('8080') }} -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") == -1
+    - configure_iptables_remove is not defined and configure_iptables_remove != 'yes'
+  tags:
+    - config-iptables
+
+- name: removing iptables rules {{ role_comment }}
+  become: yes
+  shell: iptables -D {{ item.chain | default('INPUT') }} -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }} --dport {{ item.port | default('8080') }} -j {{ item.jump_target | default('ACCEPT') }} -m comment --comment "{{ item.comment | default('ansible managed') }}"
+  no_log: "{{ debug_hide }}"
+  with_items: "{{ iptable_rules | default([]) }}"
+  when:
+    - iptable_rules is defined
+    - item.chain is not defined or item.chain != 'FORWARD'
+    - iptablesrules.stdout.find("{{ item.chain | default('INPUT') }} -p {{ item.protocol | default('tcp') }} -m {{ item.match | default('tcp') }} --dport {{ item.port | default('8080') }} -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") != -1
+    - configure_iptables_remove is defined and configure_iptables_remove == 'yes'
+  tags:
+    - config-iptables
+
+# PROCESS chain=FORWARD
+
+- name: configuring forward iptables rules {{ role_comment }}
+  become: yes
+  shell: iptables -{{ item.action | default('A') }} {{ item.chain }} -i {{ item.interface_from }} -o {{ item.interface_to }} -j {{ item.jump_target | default('ACCEPT') }} -m comment --comment "{{ item.comment | default('ansible managed') }}"
+  no_log: "{{ debug_hide }}"
+  with_items: "{{ iptable_rules | default([]) }}"
+  when:
+    - iptable_rules is defined
+    - item.chain is defined and item.chain == 'FORWARD'
+    - item.interface_from is defined and item.interface_to is defined
+    - iptablesrules.stdout.find("{{ item.chain }} -i {{ item.interface_from }} -o {{ item.interface_to }} -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") == -1
+    - configure_iptables_remove is not defined and configure_iptables_remove != 'yes'
+  tags:
+    - config-iptables
+
+- name: removing forward iptables rules {{ role_comment }}
+  become: yes
+  shell: iptables -D {{ item.chain }} -i {{ item.interface_from }} -o {{ item.interface_to }} -j {{ item.jump_target | default('ACCEPT') }} -m comment --comment "{{ item.comment | default('ansible managed') }}"
+  no_log: "{{ debug_hide }}"
+  with_items: "{{ iptable_rules | default([]) }}"
+  when:
+    - iptable_rules is defined
+    - item.chain is defined and item.chain == 'FORWARD'
+    - item.interface_from is defined and item.interface_to is defined
+    - iptablesrules.stdout.find("{{ item.chain }} -i {{ item.interface_from }} -o {{ item.interface_to }} -m comment --comment {{ item.comment | default('ansible managed') }} -j {{ item.jump_target | default('ACCEPT') }}") != -1
+    - configure_iptables_remove is defined and configure_iptables_remove == 'yes'
+  tags:
+    - config-iptables
+
+- name: save iptables {{ role_comment }}
+  become: yes
+  shell: iptables-save | tee /etc/sysconfig/iptables
+  no_log: "{{ debug_hide }}"
+  when:
+    - iptable_rules is defined
+  tags:
+    - config-iptables
+
+- name: restart iptables {{ role_comment }}
+  become: yes
+  service:
+    name: iptables
+    state: restarted
+  when:
+    - iptable_rules is defined
+  tags:
+    - config-iptables
