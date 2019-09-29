@@ -1,15 +1,32 @@
 ---
 - name: Converge
-  hosts: all
+  hosts: instance
   become: true
+  vars:
+    local_role_name: "ansible-role-config-iptables"
+    role_name: "{% if lookup('env','ROLE_NAME_FULL') %}{{ lookup('env','ROLE_NAME_FULL') }}{% else %}{{ local_role_name }}{% endif %}"
 
   pre_tasks:
-    - name: Update apt cache.
-      apt: update_cache=yes cache_valid_time=600
-      when: ansible_os_family == 'Debian'
+    - name: get docker host ip
+      become: true
+      shell: |
+        set -o pipefail
+        /sbin/ip route | awk '/default/ { print $3 }'
+      args:
+        executable: /bin/bash
+      register: dockerhost_ip
+      changed_when: false
 
   roles:
     - {
-      role: aem_design.config_iptables,
-      debug_hide: false
+      role: "{{ role_name }}",
+      debug_hide: "false",
+      iptable_rules: [
+        { port: "4502", comment: "service_aem_port", protocol: "tcp" },
+        { port: "58242", comment: "service_aem_debug_port", protocol: "tcp" },
+        { port: "53", comment: "service_dns_port" },
+        { port: "53", comment: "service_dns_port_udp", protocol: "udp", match: "udp" },
+        { chain: "FORWARD", interface_from: "docker0", interface_to: "eth0", comment: "forward_docker_to_eth" },
+        { chain: "FORWARD", interface_from: "eth0", interface_to: "docker0", comment: "forward_eth_to_docker" }
+      ]
     }
